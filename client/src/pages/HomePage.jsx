@@ -1,7 +1,7 @@
 import React, { useContext } from 'react'
 import Sidebar from '../components/Sidebar'
 import ChatContainer from '../components/ChatContainer'
-import RightSideBar from '../components/RightSideBar'
+import RightSideBar from '../components/RightSidebar.jsx'
 import { ChatContext } from '../../context/ChatContext.jsx'
 
 const HomePage = () => {
