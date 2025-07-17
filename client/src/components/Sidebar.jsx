@@ -12,7 +12,7 @@ const Sidebar = () => {
     users = [], // give fallback so map doesn’t break
     selectedUser,
     setSelectedUser,
-    unseenMessages = {}
+    unseenMessages, setUnseenMessages = {}
     } = chatContext;
 
     const [input, setInput] = useState('');
