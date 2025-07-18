@@ -10,6 +10,7 @@ export const ChatProvider = ({ children }) => {
     const [selectedUser, setSelectedUser] = useState(null);
     const [unseenMessages, setUnseenMessages] = useState({});
     const selectedUserRef = useRef(null);
+    const typingTimeoutRef = useRef(null);
 
     const { socket, axios } = useContext(AuthContext);
 
@@ -52,12 +53,21 @@ export const ChatProvider = ({ children }) => {
         }
     };
 
+    // Displaying when someone typing
+    const handleTyping = () => {
+        socket.emit("typing", { senderId: authUser._id, receiverId: selectedUser._id });
+      
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = setTimeout(() => {
+          socket.emit("stopTyping", { senderId: authUser._id, receiverId: selectedUser._id });
+        }, 1000); // 1 second pause
+      };
+
     // 🔔 Socket listener for incoming messages
     useEffect(() => {
         if (!socket) return;
       
         const handleNewMessage = (newMessage) => {
-            console.log("📥 New incoming message:", newMessage); 
           const selectedId = selectedUserRef.current?._id || localStorage.getItem("selectedUserId");
       
           const isChatOpen =
