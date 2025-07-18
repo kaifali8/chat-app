@@ -8,12 +8,13 @@ const Sidebar = () => {
     const chatContext = useContext(ChatContext);
 
     const {
-    getUsers,
-    users = [], // give fallback so map doesn’t break
-    selectedUser,
-    setSelectedUser,
-    unseenMessages, setUnseenMessages = {}
-    } = chatContext;
+        getUsers,
+        users = [],
+        selectedUser,
+        setSelectedUser,
+        unseenMessages = {},
+        setUnseenMessages
+      } = chatContext;
 
     const [input, setInput] = useState('');
     const [menuOpen, setMenuOpen] = useState(false);
@@ -73,6 +74,7 @@ const Sidebar = () => {
                         key={user._id}
                         onClick={() => {
                             setSelectedUser(user);
+                            localStorage.setItem("selectedUserId", user._id);
                             setUnseenMessages(prev => ({...prev, [user._id]:0}))
                         }}
                     >

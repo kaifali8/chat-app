@@ -13,6 +13,7 @@ const ChatContainer = () => {
     sendMessage,
     getMessages
   } = useContext(ChatContext);
+
   const { authUser, onlineUsers } = useContext(AuthContext);
 
   const [input, setInput] = useState('');
@@ -47,9 +48,8 @@ const ChatContainer = () => {
   }, [selectedUser]);
 
   useEffect(() => {
-    if (scrollEnd.current && messages) {
-      scrollEnd.current.scrollIntoView({ behavior: 'smooth' });
-    }
+    if (!scrollEnd.current) return;
+    scrollEnd.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   return selectedUser ? (
