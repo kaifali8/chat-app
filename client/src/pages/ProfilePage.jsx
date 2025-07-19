@@ -13,20 +13,29 @@ const ProfilePage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedImg) {
-      await updateProfile({ fullName: name, bio });
-      navigate("/", { replace: true });
-      return;
+  
+    try {
+      let dataToSend = { fullName: name, bio };
+  
+      if (selectedImg) {
+        const reader = new FileReader();
+        reader.onload = async () => {
+          dataToSend.profilePic = reader.result;
+  
+          await updateProfile(dataToSend); // we assume this handles toast and error
+          navigate("/", { replace: true });
+        };
+        reader.readAsDataURL(selectedImg);
+      } else {
+        await updateProfile(dataToSend);
+        navigate("/", { replace: true });
+      }
+    } catch (err) {
+      console.error("Update failed:", err);
+      toast.error("Failed to update profile");
     }
-
-    const reader = new FileReader();
-    reader.readAsDataURL(selectedImg);
-    reader.onload = async () => {
-      const base64Image = reader.result;
-      await updateProfile({ profilePic: base64Image, fullName: name, bio });
-      navigate("/", { replace: true });
-    };
   };
+  
 
   return (
     <div className='min-h-screen bg-cover bg-no-repeat flex items-center justify-center'>

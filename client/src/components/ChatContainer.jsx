@@ -6,7 +6,6 @@ import { AuthContext } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 import EmojiPicker from 'emoji-picker-react';
 
-
 const ChatContainer = () => {
   const {
     messages,
@@ -29,37 +28,52 @@ const ChatContainer = () => {
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
+  
     const payload = {};
-
+  
     if (selectedFile) {
-      payload.file = filePreview;
-      payload.fileType = selectedFile.type;
-    } else if (input.trim()) {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        payload.image = reader.result;
+      
+      
+        socket.emit('stopTyping', {
+          senderId: authUser._id,
+          receiverId: selectedUser._id,
+        });
+      
+        await sendMessage(payload);
+      
+        setSelectedFile(null);
+        setFilePreview(null);
+      };
+      reader.readAsDataURL(selectedFile); // read as base64
+      return;
+    }
+  
+    if (input.trim()) {
       payload.text = input.trim();
-    } else return;
-
-    socket.emit('stopTyping', {
-      senderId: authUser._id,
-      receiverId: selectedUser._id,
-    });
-
-    await sendMessage(payload);
-    setInput('');
-    setSelectedFile(null);
-    setFilePreview(null);
+  
+      socket.emit('stopTyping', {
+        senderId: authUser._id,
+        receiverId: selectedUser._id,
+      });
+  
+      await sendMessage(payload);
+      setInput('');
+    }
   };
+  
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (!(
-      file.type.startsWith('image/') ||
-      file.type.startsWith('video/') ||
-      file.type === 'application/pdf'
-    )) {
-      toast.error('Unsupported file type');
+  
+    if (!file.type.startsWith('image/')) {
+      toast.error('Only image files are allowed');
       return;
     }
+  
     setSelectedFile(file);
     const reader = new FileReader();
     reader.onloadend = () => setFilePreview(reader.result);
@@ -81,12 +95,12 @@ const ChatContainer = () => {
   }, [selectedUser]);
 
   useEffect(() => {
-    if (!scrollEnd.current) return;
-    scrollEnd.current.scrollIntoView({ behavior: 'smooth' });
+    scrollEnd.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   return selectedUser ? (
     <div className="h-full overflow-scroll relative backdrop-blur-lg">
+
       {/* Header */}
       <div className="flex items-center gap-3 py-3 mx-4 border-b border-stone-500">
         <img src={selectedUser.profilePic || assets.avatar_icon} alt="" className="w-8 rounded-full" />
@@ -104,68 +118,75 @@ const ChatContainer = () => {
           const isOwn = msg.senderId === authUser._id;
           return (
             <div key={i} className={`flex items-end gap-2 ${isOwn ? 'justify-end' : 'justify-end flex-row-reverse'}`}>
-              {msg.file ? (
-                msg.fileType.startsWith('image/') ? (
-                  <img src={msg.file} className="max-w-[230px] mb-8" alt="file" />
-                ) : msg.fileType.startsWith('video/') ? (
-                  <video src={msg.file} controls className="max-w-[230px] mb-8" />
-                ) : msg.fileType === 'application/pdf' ? (
-                  <embed src={msg.file} type="application/pdf" width="200px" className="mb-8" />
-                ) : null
+              {msg.image ? (
+                <img
+                  src={msg.image}
+                  className="max-w-[230px] rounded-lg mb-8"
+                  alt="sent image"
+                />
               ) : (
                 <p className={`p-2 max-w-[300px] md:text-sm font-light rounded-lg mb-8 break-all bg-violet-500/30 text-white ${isOwn ? 'rounded-br-none' : 'rounded-bl-none'}`}>
                   {msg.text}
                 </p>
               )}
               <div className="text-center text-xs">
-                <img src={isOwn ? authUser.profilePic : selectedUser.profilePic || assets.avatar_icon} className="w-8 rounded-full" alt="" />
+                <img
+                  src={isOwn ? authUser.profilePic : selectedUser.profilePic || assets.avatar_icon}
+                  className="w-8 rounded-full"
+                  alt="user avatar"
+                />
                 <p className="text-gray-500">{formatMessageTime(msg.createdAt)}</p>
               </div>
             </div>
+
           );
         })}
         {isTyping && <p className="text-gray-400 italic mb-2 ml-2">{selectedUser.fullName} is typing...</p>}
         <div ref={scrollEnd} />
       </div>
 
-      {/* Input & Actions */}
+      {/* Input */}
       <div className="absolute bottom-0 w-full flex items-center gap-3 p-3 bg-gray-900" onClick={() => setShowEmojiPicker(false)} >
-      {showEmojiPicker && (
-  <div
-    className="absolute bottom-20 left-4 z-50 bg-[#1e1e1e] rounded-lg shadow-lg p-1"
-    onClick={(e) => e.stopPropagation()} // prevent closing when clicked inside
-  >
-    <EmojiPicker theme="dark" onEmojiClick={(e) => setInput((prev) => prev + e.emoji)}
-      searchDisabled skinTonesDisabled/>
-  </div>
-)}
+        {showEmojiPicker && (
+          <div
+            className="absolute bottom-20 left-4 z-50 bg-[#1e1e1e] rounded-lg shadow-lg p-1"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <EmojiPicker theme="dark" onEmojiClick={(e) => setInput((prev) => prev + e.emoji)} searchDisabled skinTonesDisabled />
+          </div>
+        )}
 
-        <button
-          onClick={(e) => { e.stopPropagation(); // so it doesn’t auto-close on click
-         setShowEmojiPicker((prev) => !prev);}} className="text-white">😊</button>
+        <button onClick={(e) => {
+          e.stopPropagation();
+          setShowEmojiPicker((prev) => !prev);
+        }} className="text-white">😊</button>
+
         <label htmlFor="file-upload">
           <img src={assets.gallery_icon} alt="attach" className="w-5 cursor-pointer" />
         </label>
-        <input id="file-upload" type="file" accept="image/*,video/*,application/pdf" hidden onChange={handleFileSelect} />
+        <input id="file-upload" type="file" accept="image/*" hidden onChange={handleFileSelect} />
 
         {filePreview && (
           <div className="preview absolute bottom-16 left-4 bg-gray-700 p-2 rounded-lg">
-            {selectedFile.type.startsWith('image/') && <img src={filePreview} className="max-w-xs" alt="preview" />}
-            {selectedFile.type.startsWith('video/') && <video src={filePreview} controls className="max-w-xs" />}
-            {selectedFile.type === 'application/pdf' && <embed src={filePreview} type="application/pdf" width="200px" />}
+            {selectedFile?.type.startsWith('image/') && <img src={filePreview} className="max-w-xs" alt="preview" />}
             <button onClick={() => { setSelectedFile(null); setFilePreview(null); }}>✕</button>
           </div>
         )}
 
-        <input value={input} onChange={(e) => {
-          setInput(e.target.value);
-          socket.emit('typing', { senderId: authUser._id, receiverId: selectedUser._id });
-          clearTimeout(typingTimeoutRef.current);
-          typingTimeoutRef.current = setTimeout(() => {
-            socket.emit('stopTyping', { senderId: authUser._id, receiverId: selectedUser._id });
-          }, 2000);
-        }} onKeyDown={(e) => e.key === 'Enter' && handleSendMessage(e)}
-         placeholder="Type a message" className="flex-1 px-3 py-2 rounded-lg bg-gray-800 text-white" />
+        <input
+          value={input}
+          onChange={(e) => {
+            setInput(e.target.value);
+            socket.emit('typing', { senderId: authUser._id, receiverId: selectedUser._id });
+            clearTimeout(typingTimeoutRef.current);
+            typingTimeoutRef.current = setTimeout(() => {
+              socket.emit('stopTyping', { senderId: authUser._id, receiverId: selectedUser._id });
+            }, 2000);
+          }}
+          onKeyDown={(e) => e.key === 'Enter' && handleSendMessage(e)}
+          placeholder="Type a message"
+          className="flex-1 px-3 py-2 rounded-lg bg-gray-800 text-white"
+        />
 
         <button onClick={handleSendMessage}>
           <img src={assets.send_button} alt="send" className="w-7" />
